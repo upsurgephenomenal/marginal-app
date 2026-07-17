@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marginal — read less, understand more</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Serif+4:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root{
+    --ink:#1C2541;
+    --ink-soft:#2E3B5E;
+    --ink-faint:#5A6584;
+    --paper:#F0E9DC;
+    --paper-deep:#E4DBC8;
+    --paper-card:#FAF6EC;
+    --moss:#4B6B53;
+    --moss-soft:#DCE6DC;
+    --amber:#C4922E;
+    --amber-soft:#F2E3C0;
+    --rust:#A85C42;
+    --rust-soft:#EFDCD3;
+    --line:rgba(28,37,65,0.14);
+    --line-strong:rgba(28,37,65,0.28);
+    --font-display:'Fraunces',serif;
+    --font-body:'Source Serif 4',serif;
+    --font-mono:'JetBrains Mono',monospace;
+    --shadow-card:0 1px 2px rgba(28,37,65,0.06), 0 6px 18px rgba(28,37,65,0.08);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(28,37,65,0.05) 1px, transparent 0);
+    background-size:22px 22px;
+    color:var(--ink);
+    font-family:var(--font-body);
+    min-height:100vh;
+  }
+  ::selection{background:var(--amber-soft);}
+  button{font-family:inherit;cursor:pointer;}
+  textarea,input{font-family:inherit;}
+
+  /* ---------- Shell ---------- */
+  .shell{max-width:1180px;margin:0 auto;padding:28px 24px 80px;}
+  header.topbar{
+    display:flex;align-items:baseline;justify-content:space-between;
+    gap:16px;flex-wrap:wrap;
+    border-bottom:2px solid var(--ink);
+    padding-bottom:16px;margin-bottom:22px;
+  }
+  .brand{display:flex;align-items:baseline;gap:10px;}
+  .brand .mark{
+    font-family:var(--font-display);font-weight:700;font-size:26px;
+    letter-spacing:-0.01em;
+  }
+  .brand .tag{
+    font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--ink-faint);
+  }
+  nav.tabs{display:flex;gap:4px;background:var(--paper-deep);padding:4px;border-radius:10px;}
+  nav.tabs button{
+    border:none;background:transparent;padding:9px 16px;border-radius:7px;
+    font-family:var(--font-mono);font-size:12.5px;letter-spacing:.03em;
+    text-transform:uppercase;color:var(--ink-soft);font-weight:500;
+    transition:background .15s ease,color .15s ease;
+  }
+  nav.tabs button.active{background:var(--ink);color:var(--paper);}
+  nav.tabs button:not(.active):hover{background:rgba(28,37,65,0.08);}
+
+  h1,h2,h3{font-family:var(--font-display);font-weight:600;margin:0 0 8px;color:var(--ink);}
+  p{line-height:1.6;}
+  .muted{color:var(--ink-faint);}
+
+  .view{display:none;}
+  .view.active{display:block;animation:fadein .25s ease;}
+  @keyframes fadein{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+  /* ---------- Library ---------- */
+  .dropzone{
+    border:2px dashed var(--line-strong);
+    border-radius:14px;padding:34px 24px;text-align:center;
+    background:var(--paper-card);margin-bottom:26px;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .dropzone.drag{border-color:var(--moss);background:var(--moss-soft);}
+  .dropzone h2{margin-bottom:6px;font-size:20px;}
+  .dropzone .hint{font-family:var(--font-mono);font-size:12px;color:var(--ink-faint);margin-top:10px;}
+  .btn{
+    display:inline-flex;align-items:center;gap:8px;
+    background:var(--ink);color:var(--paper);border:none;
+    padding:10px 18px;border-radius:8px;font-size:14px;font-weight:600;
+    box-shadow:var(--shadow-card);
+  }
+  .btn:hover{background:var(--ink-soft);}
+  .btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line-strong);box-shadow:none;}
+  .btn.ghost:hover{background:var(--paper-deep);}
+  .btn.small{padding:6px 12px;font-size:12.5px;}
+  .btn:disabled{opacity:.45;cursor:not-allowed;}
+
+  .doc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;}
+  .doc-card{
+    background:var(--paper-card);border:1px solid var(--line);
+    border-radius:12px;padding:16px;box-shadow:var(--shadow-card);
+    position:relative;overflow:hidden;
+    display:flex;flex-direction:column;gap:8px;min-height:150px;
+  }
+  .doc-card::before{
+    content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--moss);
+  }
+  .doc-card .title{font-family:var(--font-display);font-weight:600;font-size:16px;line-height:1.25;}
+  .doc-card .meta{font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);}
+  .doc-card .progress-row{display:flex;align-items:center;gap:6px;margin-top:auto;}
+  .progress-track{flex:1;height:5px;background:var(--paper-deep);border-radius:3px;overflow:hidden;}
+  .progress-fill{height:100%;background:var(--moss);}
+  .doc-card .row-actions{display:flex;gap:8px;margin-top:4px;}
+  .empty-state{padding:40px 10px;text-align:center;color:var(--ink-faint);font-family:var(--font-mono);font-size:13px;}
+
+  /* ---------- Read & Learn ---------- */
+  .read-layout{display:grid;grid-template-columns:220px 1fr 230px;gap:20px;align-items:start;}
+  @media (max-width:900px){.read-layout{grid-template-columns:1fr;}}
+  .panel{background:var(--paper-card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-card);}
+  .chunk-nav{padding:14px;position:sticky;top:20px;}
+  .chunk-nav h3{font-size:13px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.04em;color:var(--ink-faint);margin-bottom:10px;}
+  .chunk-item{
+    display:flex;align-items:center;gap:8px;padding:8px 8px;border-radius:7px;
+    font-size:13px;cursor:pointer;color:var(--ink-soft);
+  }
+  .chunk-item:hover{background:var(--paper-deep);}
+  .chunk-item.active{background:var(--ink);color:var(--paper);}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--line-strong);flex-shrink:0;}
+  .dot.done{background:var(--moss);}
+  .dot.loading{background:var(--amber);}
+
+  .reader-card{padding:24px 26px;min-height:340px;}
+  .reader-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
+  .toggle-group{display:flex;gap:2px;background:var(--paper-deep);padding:3px;border-radius:8px;}
+  .toggle-group button{border:none;background:transparent;padding:6px 12px;border-radius:6px;font-size:12px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.03em;color:var(--ink-soft);}
+  .toggle-group button.active{background:var(--paper-card);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.1);}
+  .reader-body{font-size:16.5px;line-height:1.75;color:var(--ink);}
+  .reader-body.original{font-style:italic;color:var(--ink-soft);}
+  .key-points{margin-top:18px;padding-top:16px;border-top:1px dashed var(--line-strong);}
+  .key-points h4{font-family:var(--font-mono);font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--moss);margin:0 0 10px;}
+  .key-points ul{margin:0;padding-left:0;list-style:none;}
+  .key-points li{
+    position:relative;padding-left:20px;margin-bottom:9px;font-size:14.5px;line-height:1.55;
+  }
+  .key-points li::before{
+    content:"—";position:absolute;left:0;color:var(--moss);font-weight:700;
+  }
+  .loading-row{display:flex;align-items:center;gap:10px;color:var(--ink-faint);font-family:var(--font-mono);font-size:13px;padding:20px 0;}
+  .spinner{width:14px;height:14px;border-radius:50%;border:2px solid var(--line-strong);border-top-color:var(--moss);animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .facts-rail{padding:14px;position:sticky;top:20px;}
+  .facts-rail h3{font-size:13px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.04em;color:var(--ink-faint);margin-bottom:10px;}
+  .fact-card{
+    background:var(--amber-soft);border-radius:8px;padding:10px 11px;margin-bottom:8px;
+    font-size:12.5px;line-height:1.5;color:var(--ink);border-left:3px solid var(--amber);
+  }
+  .fact-card .fkind{font-family:var(--font-mono);font-size:10px;text-transform:uppercase;color:var(--rust);display:block;margin-bottom:3px;letter-spacing:.04em;}
+
+  /* ---------- Write & Cite ---------- */
+  .write-layout{display:grid;grid-template-columns:1.15fr 0.85fr;gap:20px;align-items:start;}
+  @media (max-width:900px){.write-layout{grid-template-columns:1fr;}}
+  .source-picker{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+  .source-picker select{
+    font-family:var(--font-mono);font-size:12.5px;padding:8px 10px;border-radius:7px;
+    border:1px solid var(--line-strong);background:var(--paper-card);color:var(--ink);
+  }
+  .draft-card{padding:18px;}
+  .draft-card textarea{
+    width:100%;min-height:420px;border:none;background:transparent;resize:vertical;
+    font-family:var(--font-body);font-size:16px;line-height:1.75;color:var(--ink);outline:none;
+  }
+  .draft-meta{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);margin-top:8px;padding-top:10px;border-top:1px solid var(--line);}
+
+  .assist-panel{display:flex;flex-direction:column;gap:14px;}
+  .chat-card{padding:16px;display:flex;flex-direction:column;height:520px;}
+  .chat-log{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-right:4px;}
+  .msg{padding:10px 12px;border-radius:9px;font-size:13.5px;line-height:1.6;max-width:96%;}
+  .msg.user{align-self:flex-end;background:var(--ink);color:var(--paper);}
+  .msg.assistant{align-self:flex-start;background:var(--paper-deep);color:var(--ink);}
+  .msg.assistant .cite-tag{
+    display:inline-block;font-family:var(--font-mono);font-size:9.5px;background:var(--rust-soft);
+    color:var(--rust);padding:1px 5px;border-radius:4px;margin-left:4px;vertical-align:middle;
+  }
+  .chat-input-row{display:flex;gap:8px;margin-top:10px;}
+  .chat-input-row textarea{
+    flex:1;border:1px solid var(--line-strong);border-radius:8px;padding:9px 10px;
+    font-size:13.5px;resize:none;height:44px;background:var(--paper);color:var(--ink);
+  }
+
+  .refs-card{padding:16px;}
+  .refs-card .refs-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .refs-card h3{font-size:13px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.04em;color:var(--ink-faint);margin:0;}
+  .ref-item{
+    font-size:12.5px;line-height:1.5;padding:9px 0;border-bottom:1px solid var(--line);
+  }
+  .ref-item:last-child{border-bottom:none;}
+  .ref-item .rnum{font-family:var(--font-mono);color:var(--rust);margin-right:6px;}
+  .ref-item .rsource{color:var(--ink-faint);font-family:var(--font-mono);font-size:11px;display:block;margin-top:2px;}
+
+  .toast{
+    position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+    background:var(--ink);color:var(--paper);padding:10px 18px;border-radius:8px;
+    font-size:13px;font-family:var(--font-mono);box-shadow:var(--shadow-card);
+    opacity:0;pointer-events:none;transition:opacity .2s ease;z-index:50;
+  }
+  .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="topbar">
+    <div class="brand">
+      <span class="mark">Marginal</span>
+      <span class="tag">read less · understand more</span>
+    </div>
+    <nav class="tabs">
+      <button data-view="library" class="active">Library</button>
+      <button data-view="read">Read &amp; Learn</button>
+      <button data-view="write">Write &amp; Cite</button>
+    </nav>
+  </header>
+  <div id="whoami" class="muted" style="font-family:var(--font-mono);font-size:11px;margin:-14px 0 18px;"></div>
+
+  <!-- LIBRARY -->
+  <section id="view-library" class="view active">
+    <div class="dropzone" id="dropzone">
+      <h2>Drop a PDF or text file here</h2>
+      <p class="muted" style="margin:0;">Or click to browse. Each document gets broken into sections and explained simply, without losing the substance.</p>
+      <input type="file" id="fileInput" accept=".pdf,.txt" style="display:none;">
+      <div style="margin-top:14px;"><button class="btn" id="browseBtn">Choose a file</button></div>
+      <div class="hint" id="uploadStatus"></div>
+    </div>
+    <div class="doc-grid" id="docGrid"></div>
+  </section>
+
+  <!-- READ & LEARN -->
+  <section id="view-read" class="view">
+    <div id="readEmpty" class="empty-state">Upload something in the Library tab to start reading.</div>
+    <div class="read-layout" id="readLayout" style="display:none;">
+      <div class="panel chunk-nav">
+        <h3>Sections</h3>
+        <div id="chunkList"></div>
+      </div>
+      <div class="panel reader-card">
+        <div class="reader-head">
+          <h2 id="chunkTitle" style="margin:0;font-size:19px;">Section</h2>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <button class="btn ghost small" id="processAllBtn">Process whole document</button>
+            <div class="toggle-group">
+              <button id="toggleSimple" class="active">Simple</button>
+              <button id="toggleOriginal">Original</button>
+            </div>
+          </div>
+        </div>
+        <div id="readerBody"><div class="loading-row"><div class="spinner"></div> Preparing…</div></div>
+      </div>
+      <div class="panel facts-rail">
+        <h3>Worth citing</h3>
+        <div id="factsList"><p class="muted" style="font-size:12.5px;">Facts and quotes worth referencing will appear here as this section is explained.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WRITE & CITE -->
+  <section id="view-write" class="view">
+    <div class="source-picker">
+      <label for="sourceSelect" class="muted" style="font-family:var(--font-mono);font-size:12px;">Writing alongside:</label>
+      <select id="sourceSelect"><option value="">No source selected</option></select>
+      <span class="muted" style="font-size:12.5px;">Your draft stays in your words — Claude helps develop it and flags anything that should be cited.</span>
+    </div>
+    <div class="write-layout">
+      <div class="panel draft-card">
+        <textarea id="draftText" placeholder="Start writing your own publication here…"></textarea>
+        <div class="draft-meta">
+          <span id="draftWordCount">0 words</span>
+          <span id="draftSaved">saved</span>
+        </div>
+      </div>
+      <div class="assist-panel">
+        <div class="panel chat-card">
+          <div class="chat-log" id="chatLog">
+            <div class="msg assistant">Tell me what you're trying to say, or paste a rough paragraph, and I'll help you develop it — grounded in the source where relevant, always in your voice.</div>
+          </div>
+          <div class="chat-input-row">
+            <textarea id="chatInput" placeholder="e.g. Help me open with why this matters…"></textarea>
+            <button class="btn small" id="chatSend">Send</button>
+          </div>
+        </div>
+        <div class="panel refs-card">
+          <div class="refs-head">
+            <h3>Reference shelf</h3>
+            <button class="btn ghost small" id="exportRefs">Export</button>
+          </div>
+          <div id="refsList"><p class="muted" style="font-size:12.5px;">References will collect here automatically as you write.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+/* ---------------- State ---------------- */
+let state = {
+  documents: {},      // id -> {id,title,createdAt,chunks:[{id,label,original,simple,keyPoints,facts,status}]}
+  activeDocId: null,
+  activeChunkId: null,
+  readMode: 'simple',
+  references: [],      // {id, text, source, docId, location}
+  drafts: {},          // docId(or 'none') -> draft text
+};
+
+const $ = (sel, root=document) => root.querySelector(sel);
+const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._h); toast._h = setTimeout(()=>t.classList.remove('show'), 2400);
+}
+function uid(){ return Math.random().toString(36).slice(2,10); }
+
+/* ---------------- Storage ----------------
+   Talks to /api/storage, a Cloudflare Pages Function backed by KV.
+   Personal ("shared:false") data is automatically scoped per signed-in
+   user by the Function using the Cloudflare Access identity header, so
+   nothing user-specific needs to happen here on the client. */
+const storage = {
+  async get(key, shared=false){
+    const res = await fetch(`/api/storage?key=${encodeURIComponent(key)}&shared=${shared}`);
+    if(res.status===404) return null;
+    if(!res.ok) throw new Error('storage get failed: '+res.status);
+    return res.json();
+  },
+  async set(key, value, shared=false){
+    const res = await fetch('/api/storage', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({key, value, shared})
+    });
+    if(!res.ok) throw new Error('storage set failed: '+res.status);
+    return res.json();
+  },
+  async delete(key, shared=false){
+    const res = await fetch('/api/storage', {
+      method:'DELETE', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({key, shared})
+    });
+    if(!res.ok) throw new Error('storage delete failed: '+res.status);
+    return res.json();
+  }
+};
+
+async function saveDocMeta(){
+  try{
+    const list = Object.values(state.documents).map(d=>({id:d.id,title:d.title,createdAt:d.createdAt,chunkCount:d.chunks.length}));
+    await storage.set('doc-index', JSON.stringify(list));
+  }catch(e){ console.error('save index failed', e); }
+}
+async function saveDoc(doc){
+  try{ await storage.set('doc:'+doc.id, JSON.stringify(doc)); }
+  catch(e){ console.error('save doc failed', e); }
+}
+async function saveRefs(){
+  try{ await storage.set('references', JSON.stringify(state.references)); }
+  catch(e){ console.error('save refs failed', e); }
+}
+async function saveDrafts(){
+  try{ await storage.set('drafts', JSON.stringify(state.drafts)); }
+  catch(e){ console.error('save drafts failed', e); }
+}
+async function loadAll(){
+  try{
+    const idx = await storage.get('doc-index');
+    if(idx && idx.value){
+      const list = JSON.parse(idx.value);
+      for(const meta of list){
+        try{
+          const full = await storage.get('doc:'+meta.id);
+          if(full && full.value){ state.documents[meta.id] = JSON.parse(full.value); }
+        }catch(e){ /* missing doc, skip */ }
+      }
+    }
+  }catch(e){ /* no index yet */ }
+  try{
+    const refs = await storage.get('references');
+    if(refs && refs.value) state.references = JSON.parse(refs.value);
+  }catch(e){}
+  try{
+    const drafts = await storage.get('drafts');
+    if(drafts && drafts.value) state.drafts = JSON.parse(drafts.value);
+  }catch(e){}
+}
+
+/* ---------------- Claude API ----------------
+   Calls /api/claude, a Cloudflare Pages Function that holds the real
+   Anthropic API key server-side. The key never touches the browser. */
+async function callClaude(systemPrompt, userPrompt, maxTokens=1000){
+  const res = await fetch('/api/claude', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      system: systemPrompt,
+      messages:[{role:'user', content:userPrompt}],
+      max_tokens:maxTokens
+    })
+  });
+  const data = await res.json();
+  if(!res.ok){
+    console.error('Claude proxy error', data);
+    throw new Error(data.error || 'Claude request failed');
+  }
+  const text = (data.content||[]).map(b=>b.text||'').join('\n');
+  return text;
+}
+function parseJSONish(text){
+  let cleaned = text.trim().replace(/^```json/i,'').replace(/^```/,'').replace(/```$/,'').trim();
+  try{ return JSON.parse(cleaned); }
+  catch(e){
+    const m = cleaned.match(/\{[\s\S]*\}/);
+    if(m){ try{ return JSON.parse(m[0]); }catch(e2){} }
+    return null;
+  }
+}
+
+/* ---------------- PDF / text extraction ---------------- */
+async function extractPages(file){
+  if(file.type === 'text/plain' || file.name.toLowerCase().endsWith('.txt')){
+    const text = await file.text();
+    // split a plain text file into pseudo-pages of ~2500 chars
+    const pages = [];
+    for(let i=0;i<text.length;i+=2500) pages.push(text.slice(i,i+2500));
+    return pages.length ? pages : [text];
+  }
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+  const pages = [];
+  for(let p=1;p<=pdf.numPages;p++){
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    const text = content.items.map(it=>it.str).join(' ');
+    pages.push(text);
+  }
+  return pages;
+}
+function chunkPages(pages, targetChars=3200){
+  const chunks = [];
+  let buf = '', startPage = 1;
+  pages.forEach((pageText, idx)=>{
+    if(buf.length + pageText.length > targetChars && buf.length > 0){
+      chunks.push({original: buf.trim(), pageRange: startPage===idx+1 ? `p.${startPage}`:`p.${startPage}–${idx}`});
+      buf = ''; startPage = idx+1;
+    }
+    buf += ' ' + pageText;
+  });
+  if(buf.trim().length>0){
+    const endPage = pages.length;
+    chunks.push({original: buf.trim(), pageRange: startPage===endPage ? `p.${startPage}`:`p.${startPage}–${endPage}`});
+  }
+  return chunks.filter(c=>c.original.length>40);
+}
+
+/* ---------------- Document processing ---------------- */
+async function handleUpload(file){
+  const status = $('#uploadStatus');
+  status.textContent = 'Reading file…';
+  try{
+    const pages = await extractPages(file);
+    const rawChunks = chunkPages(pages);
+    if(rawChunks.length===0){ status.textContent='Could not find readable text in that file.'; return; }
+    const doc = {
+      id: uid(),
+      title: file.name.replace(/\.(pdf|txt)$/i,''),
+      createdAt: Date.now(),
+      chunks: rawChunks.map((c,i)=>({
+        id: uid(), label: `Section ${i+1} · ${c.pageRange}`,
+        original: c.original, simple:'', keyPoints:[], facts:[], status:'pending'
+      }))
+    };
+    state.documents[doc.id] = doc;
+    await saveDoc(doc); await saveDocMeta();
+    status.textContent = `Added "${doc.title}" — ${doc.chunks.length} section(s).`;
+    renderLibrary(); renderSourceSelect();
+    toast('Document added to your library');
+  }catch(e){
+    console.error(e);
+    status.textContent = 'Something went wrong reading that file. Try a different one?';
+  }
+}
+
+async function processChunk(docId, chunkId, opts={}){
+  const doc = state.documents[docId];
+  const chunk = doc.chunks.find(c=>c.id===chunkId);
+  if(!chunk || chunk.status==='done' || chunk.status==='loading') return;
+  chunk.status = 'loading';
+  renderReadView();
+  const system = `You explain dense written material the way a patient teacher explains it to a bright 10-year-old: plain words, short sentences, concrete examples where useful. You NEVER drop a substantive point, argument, number, or claim from the source — you simplify the language, not the content. Your simple explanation must be noticeably SHORTER than the source passage (aim for roughly 30-45% of its length) by cutting repetition and filler, never by cutting ideas. You also flag anything in the passage that is a direct quote, a specific statistic, a named study, or an attributed claim, since the reader may want to cite it later. Respond with ONLY raw JSON, no markdown fences, no preamble, in this exact shape: {"simple": "the simplified explanation as flowing prose", "key_points": ["short point 1", "short point 2", "..."], "facts": [{"kind":"quote|statistic|claim|study", "text":"the fact or quote, concise", "note":"one line on why it matters or who said it"}]}`;
+  const userPrompt = `Passage to explain (from "${doc.title}", ${chunk.label}):\n\n${chunk.original.slice(0,6000)}`;
+  try{
+    const raw = await callClaude(system, userPrompt, 1300);
+    const parsed = parseJSONish(raw);
+    if(parsed){
+      chunk.simple = parsed.simple || '';
+      chunk.keyPoints = parsed.key_points || [];
+      chunk.facts = (parsed.facts||[]).map(f=>({...f, id:uid()}));
+      chunk.status = 'done';
+    }else{
+      chunk.simple = raw; chunk.status='done';
+    }
+  }catch(e){
+    console.error(e);
+    chunk.status = 'error';
+  }
+  await saveDoc(doc); await saveDocMeta();
+  renderReadView();
+
+  // Seamless reading: once this section is ready, quietly start the next
+  // unprocessed one in the background (unless we're already running a
+  // full-document batch, which handles its own sequencing).
+  if(!opts.silent && chunk.status==='done'){
+    const idx = doc.chunks.findIndex(c=>c.id===chunkId);
+    const next = doc.chunks[idx+1];
+    if(next && next.status==='pending'){
+      processChunk(docId, next.id, {silent:true});
+    }
+  }
+}
+
+async function processAllChunks(docId){
+  const doc = state.documents[docId];
+  if(!doc || doc._batchRunning) return;
+  doc._batchRunning = true;
+  const btn = $('#processAllBtn');
+  if(btn){ btn.disabled = true; btn.textContent = 'Processing…'; }
+  for(const chunk of doc.chunks){
+    if(chunk.status==='done') continue;
+    await processChunk(docId, chunk.id, {silent:true});
+  }
+  doc._batchRunning = false;
+  if(btn){ btn.disabled = false; btn.textContent = 'All sections ready'; }
+  renderReadView();
+}
+
+/* ---------------- Rendering: Library ---------------- */
+function renderLibrary(){
+  const grid = $('#docGrid');
+  const docs = Object.values(state.documents).sort((a,b)=>b.createdAt-a.createdAt);
+  if(docs.length===0){ grid.innerHTML = ''; return; }
+  grid.innerHTML = docs.map(d=>{
+    const done = d.chunks.filter(c=>c.status==='done').length;
+    const pct = Math.round((done/d.chunks.length)*100);
+    return `<div class="doc-card">
+      <div class="title">${escapeHtml(d.title)}</div>
+      <div class="meta">${d.chunks.length} section${d.chunks.length===1?'':'s'} · added ${new Date(d.createdAt).toLocaleDateString()}</div>
+      <div class="progress-row">
+        <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+        <span class="meta">${pct}%</span>
+      </div>
+      <div class="row-actions">
+        <button class="btn small" data-open-read="${d.id}">Read</button>
+        <button class="btn ghost small" data-open-write="${d.id}">Write from this</button>
+      </div>
+    </div>`;
+  }).join('');
+  $$('[data-open-read]', grid).forEach(b=>b.addEventListener('click', ()=>{
+    state.activeDocId = b.dataset.openRead;
+    state.activeChunkId = state.documents[state.activeDocId].chunks[0]?.id || null;
+    switchView('read'); renderReadView();
+    if(state.activeChunkId) processChunk(state.activeDocId, state.activeChunkId);
+  }));
+  $$('[data-open-write]', grid).forEach(b=>b.addEventListener('click', ()=>{
+    switchView('write');
+    $('#sourceSelect').value = b.dataset.openWrite;
+    onSourceChange();
+  }));
+}
+
+/* ---------------- Rendering: Read & Learn ---------------- */
+function renderReadView(){
+  const doc = state.documents[state.activeDocId];
+  if(!doc){ $('#readEmpty').style.display='block'; $('#readLayout').style.display='none'; return; }
+  $('#readEmpty').style.display='none'; $('#readLayout').style.display='grid';
+
+  $('#chunkList').innerHTML = doc.chunks.map(c=>{
+    const dotClass = c.status==='done' ? 'done' : (c.status==='loading' ? 'loading':'');
+    const activeClass = c.id===state.activeChunkId ? 'active' : '';
+    return `<div class="chunk-item ${activeClass}" data-chunk="${c.id}"><span class="dot ${dotClass}"></span>${escapeHtml(c.label)}</div>`;
+  }).join('');
+  $$('.chunk-item', $('#chunkList')).forEach(el=>el.addEventListener('click', ()=>{
+    state.activeChunkId = el.dataset.chunk;
+    renderReadView();
+    processChunk(state.activeDocId, state.activeChunkId);
+  }));
+
+  const chunk = doc.chunks.find(c=>c.id===state.activeChunkId) || doc.chunks[0];
+  if(!chunk) return;
+  $('#chunkTitle').textContent = chunk.label;
+  const body = $('#readerBody');
+
+  const allDone = doc.chunks.every(c=>c.status==='done');
+  const allBtn = $('#processAllBtn');
+  if(allBtn){
+    if(doc._batchRunning){ allBtn.disabled = true; allBtn.textContent = 'Processing…'; }
+    else if(allDone){ allBtn.disabled = true; allBtn.textContent = 'All sections ready'; }
+    else { allBtn.disabled = false; allBtn.textContent = 'Process whole document'; }
+  }
+
+  if(chunk.status==='loading' || chunk.status==='pending'){
+    body.innerHTML = `<div class="loading-row"><div class="spinner"></div> Reading and simplifying this section…</div>`;
+  } else if(chunk.status==='error'){
+    body.innerHTML = `<p class="muted">Something went wrong on this section. <button class="btn small" id="retryChunk">Try again</button></p>`;
+    $('#retryChunk')?.addEventListener('click', ()=>{ chunk.status='pending'; processChunk(doc.id, chunk.id); });
+  } else {
+    const showOriginal = state.readMode==='original';
+    body.innerHTML = `
+      <div class="reader-body ${showOriginal?'original':''}">${escapeHtml(showOriginal ? chunk.original.slice(0,4000) : chunk.simple)}</div>
+      ${!showOriginal && chunk.keyPoints.length ? `<div class="key-points"><h4>Key points, kept intact</h4><ul>${chunk.keyPoints.map(k=>`<li>${escapeHtml(k)}</li>`).join('')}</ul></div>` : ''}
+    `;
+  }
+
+  $('#toggleSimple').classList.toggle('active', state.readMode==='simple');
+  $('#toggleOriginal').classList.toggle('active', state.readMode==='original');
+
+  const factsList = $('#factsList');
+  if(chunk.facts && chunk.facts.length){
+    factsList.innerHTML = chunk.facts.map(f=>`
+      <div class="fact-card">
+        <span class="fkind">${escapeHtml(f.kind||'note')}</span>
+        ${escapeHtml(f.text)}
+        <div style="margin-top:6px;"><button class="btn ghost small" data-add-fact="${f.id}">Add to shelf</button></div>
+      </div>`).join('');
+    $$('[data-add-fact]', factsList).forEach(btn=>btn.addEventListener('click', ()=>{
+      const fact = chunk.facts.find(f=>f.id===btn.dataset.addFact);
+      addReference({text:fact.text, source:doc.title, location:chunk.label, note:fact.note});
+      toast('Added to reference shelf');
+    }));
+  } else if(chunk.status==='done'){
+    factsList.innerHTML = `<p class="muted" style="font-size:12.5px;">Nothing especially quotable flagged in this section.</p>`;
+  } else {
+    factsList.innerHTML = `<p class="muted" style="font-size:12.5px;">Facts and quotes worth referencing will appear here as this section is explained.</p>`;
+  }
+}
+
+/* ---------------- Rendering: Write & Cite ---------------- */
+function renderSourceSelect(){
+  const sel = $('#sourceSelect');
+  const current = sel.value;
+  const docs = Object.values(state.documents);
+  sel.innerHTML = `<option value="">No source selected</option>` + docs.map(d=>`<option value="${d.id}">${escapeHtml(d.title)}</option>`).join('');
+  if(docs.some(d=>d.id===current)) sel.value = current;
+}
+function onSourceChange(){
+  const key = $('#sourceSelect').value || 'none';
+  $('#draftText').value = state.drafts[key] || '';
+  updateWordCount();
+}
+function updateWordCount(){
+  const words = $('#draftText').value.trim().split(/\s+/).filter(Boolean).length;
+  $('#draftWordCount').textContent = `${words} word${words===1?'':'s'}`;
+}
+function addReference(ref){
+  const item = {id:uid(), ...ref};
+  state.references.push(item);
+  saveRefs();
+  renderRefs();
+  return item;
+}
+function renderRefs(){
+  const list = $('#refsList');
+  if(state.references.length===0){
+    list.innerHTML = `<p class="muted" style="font-size:12.5px;">References will collect here automatically as you write.</p>`;
+    return;
+  }
+  list.innerHTML = state.references.map((r,i)=>`
+    <div class="ref-item">
+      <span class="rnum">[${i+1}]</span>${escapeHtml(r.text)}
+      <span class="rsource">${escapeHtml(r.source||'')}${r.location?' · '+escapeHtml(r.location):''}</span>
+    </div>`).join('');
+}
+
+function buildSourceDigest(doc){
+  // Prefer processed sections (simplified explanation + flagged facts —
+  // already vetted, concise, and reliable) over raw original text, so
+  // the assistant is grounded in verified material rather than guessing
+  // from unprocessed pages.
+  if(!doc) return { digest:'', unprocessedCount:0 };
+  let unprocessedCount = 0;
+  const parts = doc.chunks.map(c=>{
+    if(c.status==='done'){
+      const factLines = (c.facts||[]).map(f=>`  · [${f.kind||'note'}] ${f.text}${f.note?' — '+f.note:''}`).join('\n');
+      return `${c.label} (processed):\n${c.simple}\n${factLines ? 'Flagged facts:\n'+factLines : ''}`;
+    } else {
+      unprocessedCount++;
+      return `${c.label} (not yet processed, raw excerpt):\n${c.original.slice(0,400)}…`;
+    }
+  });
+  return { digest: parts.join('\n\n').slice(0,7000), unprocessedCount };
+}
+
+async function sendChat(){
+  const input = $('#chatInput');
+  const msg = input.value.trim();
+  if(!msg) return;
+  input.value = '';
+  appendMsg('user', msg);
+  appendMsg('assistant', '<span class="muted">Thinking this through…</span>', true);
+
+  const docId = $('#sourceSelect').value;
+  const doc = docId ? state.documents[docId] : null;
+  const draft = $('#draftText').value;
+  const { digest, unprocessedCount } = buildSourceDigest(doc);
+
+  const system = `You are a brilliant, insightful writing collaborator helping a person develop THEIR OWN publication in THEIR OWN voice. When they give you a raw idea, impression, or insight, don't just acknowledge it — genuinely EXPAND it: sharpen the argument, add a layer they hadn't considered, connect it to relevant material from the source, and hand back a developed passage (roughly 2-4 solid paragraphs, unless they clearly asked for something shorter) they can adapt directly into their draft. Be substantive and specific, never generic filler.
+
+Ground every factual claim, quote, statistic, or named idea you draw from the source material in reality — never invent one. Where you use something from the source, mark its first mention inline with a bracketed number like [1], [2], matching the order of the "references" array you return. If nothing from the source applies to a given point, don't force a citation.
+
+Respond with ONLY raw JSON, no markdown fences, no preamble, in this exact shape:
+{"reply": "the expanded passage, with inline [1] [2] style markers where you drew on the source", "references": [{"text":"the specific fact/quote/idea used, stated concisely","location":"which section it came from, if known"}]}
+If you used nothing from the source, return an empty references array and use no bracket markers.`;
+
+  const userPrompt = `${doc ? `Source material from "${doc.title}" (${unprocessedCount>0 ? unprocessedCount+' section(s) still unprocessed — treat those parts as less certain' : 'fully processed'}):\n${digest}\n\n` : 'No source document is selected — help develop the idea generally, with no citations.\n\n'}Current draft so far (most recent portion):\n${draft.slice(-3000) || '(nothing written yet)'}\n\nWriter's idea/impression to develop: ${msg}`;
+
+  try{
+    const raw = await callClaude(system, userPrompt, 1500);
+    const parsed = parseJSONish(raw);
+    removeLastMsg();
+    if(parsed){
+      let replyHtml = escapeHtml(parsed.reply || '').replace(/\n/g,'<br>');
+      if(parsed.references && parsed.references.length){
+        const shelfNumbers = parsed.references.map(r=>{
+          const item = addReference({text:r.text, source: doc?doc.title:'Assistant suggestion', location:r.location||''});
+          return state.references.indexOf(item) + 1;
+        });
+        replyHtml = replyHtml.replace(/\[(\d+)\]/g, (m, n)=>{
+          const idx = parseInt(n,10) - 1;
+          return shelfNumbers[idx] ? `<span class="cite-tag">[${shelfNumbers[idx]}]</span>` : '';
+        });
+      }
+      appendMsg('assistant', replyHtml, false, true);
+    } else {
+      appendMsg('assistant', escapeHtml(raw));
+    }
+  }catch(e){
+    console.error(e);
+    removeLastMsg();
+    appendMsg('assistant', 'Something went wrong reaching Claude. Try again?');
+  }
+}
+function appendMsg(role, html, isPlaceholder=false, isHtml=false){
+  const log = $('#chatLog');
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  if(isPlaceholder) div.dataset.placeholder = '1';
+  if(isHtml || isPlaceholder) div.innerHTML = html; else div.textContent = html;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+function removeLastMsg(){
+  const log = $('#chatLog');
+  const ph = log.querySelector('[data-placeholder="1"]');
+  if(ph) ph.remove();
+}
+
+/* ---------------- Utilities ---------------- */
+function escapeHtml(s){
+  return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function switchView(name){
+  $$('.view').forEach(v=>v.classList.remove('active'));
+  $('#view-'+name).classList.add('active');
+  $$('.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.view===name));
+}
+
+/* ---------------- Wire up ---------------- */
+async function showWhoAmI(){
+  try{
+    const res = await fetch('/api/whoami');
+    const data = await res.json();
+    $('#whoami').textContent = data.email ? `Signed in as ${data.email}` : '';
+  }catch(e){ /* Access not configured yet during local dev — ignore */ }
+}
+
+document.addEventListener('DOMContentLoaded', async ()=>{
+  showWhoAmI();
+  await loadAll();
+  renderLibrary(); renderSourceSelect(); renderRefs();
+
+  $$('.tabs button').forEach(b=>b.addEventListener('click', ()=>switchView(b.dataset.view)));
+
+  const dz = $('#dropzone'), fileInput = $('#fileInput');
+  $('#browseBtn').addEventListener('click', ()=>fileInput.click());
+  fileInput.addEventListener('change', e=>{ if(e.target.files[0]) handleUpload(e.target.files[0]); });
+  ['dragover','dragenter'].forEach(ev=>dz.addEventListener(ev, e=>{e.preventDefault(); dz.classList.add('drag');}));
+  ['dragleave','drop'].forEach(ev=>dz.addEventListener(ev, e=>{e.preventDefault(); dz.classList.remove('drag');}));
+  dz.addEventListener('drop', e=>{ const f = e.dataTransfer.files[0]; if(f) handleUpload(f); });
+  dz.addEventListener('click', (e)=>{ if(e.target===dz) fileInput.click(); });
+
+  $('#toggleSimple').addEventListener('click', ()=>{ state.readMode='simple'; renderReadView(); });
+  $('#toggleOriginal').addEventListener('click', ()=>{ state.readMode='original'; renderReadView(); });
+  $('#processAllBtn').addEventListener('click', ()=>{
+    if(state.activeDocId) processAllChunks(state.activeDocId);
+  });
+
+  $('#sourceSelect').addEventListener('change', onSourceChange);
+  $('#draftText').addEventListener('input', ()=>{
+    const key = $('#sourceSelect').value || 'none';
+    state.drafts[key] = $('#draftText').value;
+    updateWordCount();
+    $('#draftSaved').textContent = 'saving…';
+    clearTimeout(window._draftSaveT);
+    window._draftSaveT = setTimeout(async ()=>{ await saveDrafts(); $('#draftSaved').textContent='saved'; }, 600);
+  });
+  $('#chatSend').addEventListener('click', sendChat);
+  $('#chatInput').addEventListener('keydown', e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChat(); } });
+
+  $('#exportRefs').addEventListener('click', ()=>{
+    if(state.references.length===0){ toast('No references yet'); return; }
+    const text = state.references.map((r,i)=>`[${i+1}] ${r.text} — ${r.source||''}${r.location?' ('+r.location+')':''}`).join('\n');
+    navigator.clipboard.writeText(text).then(()=>toast('References copied to clipboard'));
+  });
+});
+</script>
+</body>
+</html>

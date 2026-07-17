@@ -1,0 +1,14 @@
+name = "marginal-app"
+compatibility_date = "2024-09-23"
+pages_build_output_dir = "public"
+
+# This binding is required in production too, but production bindings
+# are configured in the Cloudflare dashboard (Pages project > Settings
+# > Functions), not here. This file only matters if you run the app
+# locally with `wrangler pages dev`.
+[[kv_namespaces]]
+binding = "MARGINAL_KV"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+[ai]
+binding = "AI"
