@@ -1,0 +1,14 @@
+name = "marginal-app"
+compatibility_date = "2024-09-23"
+pages_build_output_dir = "public"
+
+# Production bindings below are also configurable in the dashboard
+# (your project's Bindings tab, or Settings > Functions on older
+# dashboard layouts), which is the easier path if you're not using the
+# Wrangler CLI. This file mainly matters for local `wrangler pages dev`.
+[[kv_namespaces]]
+binding = "MARGINAL_KV"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+[ai]
+binding = "AI"
